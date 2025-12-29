@@ -72,37 +72,6 @@
             font-size: 11px;
             color: #ccc;
         }
-        #rotation-controls {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 10px;
-            border-radius: 8px;
-            color: white;
-        }
-        .rotation-title {
-            font-size: 12px;
-            margin-bottom: 6px;
-            color: #ccc;
-        }
-        .rotation-row {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 6px;
-            align-items: center;
-        }
-        .rotation-label {
-            width: 60px;
-            font-size: 11px;
-        }
-        .rotate-btn {
-            width: 40px;
-            height: 40px;
-            font-size: 18px;
-            padding: 0;
-            min-width: 40px;
-        }
         
         @media (max-width: 768px) {
             #ui {
@@ -125,24 +94,6 @@
                 font-size: 9px;
                 margin-top: 6px;
             }
-            #rotation-controls {
-                bottom: 5px;
-                right: 5px;
-                padding: 8px;
-            }
-            .rotation-title {
-                font-size: 10px;
-                margin-bottom: 4px;
-            }
-            .rotation-label {
-                width: 50px;
-                font-size: 9px;
-            }
-            .rotate-btn {
-                width: 35px;
-                height: 35px;
-                font-size: 16px;
-            }
         }
     </style>
 </head>
@@ -155,25 +106,7 @@
             <button id="redo">Redo</button>
             <button id="reset">New Game</button>
         </div>
-        <div id="instructions">Click on a stick to drop a piece</div>
-    </div>
-    <div id="rotation-controls">
-        <div class="rotation-title">Camera Rotation</div>
-        <div class="rotation-row">
-            <div class="rotation-label">Horizontal:</div>
-            <button class="rotate-btn" id="rotate-left">←</button>
-            <button class="rotate-btn" id="rotate-right">→</button>
-        </div>
-        <div class="rotation-row">
-            <div class="rotation-label">Vertical:</div>
-            <button class="rotate-btn" id="rotate-up">↑</button>
-            <button class="rotate-btn" id="rotate-down">↓</button>
-        </div>
-        <div class="rotation-row">
-            <div class="rotation-label">Zoom:</div>
-            <button class="rotate-btn" id="zoom-in">+</button>
-            <button class="rotate-btn" id="zoom-out">−</button>
-        </div>
+        <div id="instructions">Click stick to play • Right-drag to rotate • Scroll to zoom</div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -357,25 +290,24 @@
         }
 
         function onMouseDown(event) {
-            if (event.button === 0) { // Left click
-                isDragging = false; // Start as false, will become true if moved
+            if (event.button === 2) { // Right click
+                isDragging = false;
                 previousMouseX = event.clientX;
                 previousMouseY = event.clientY;
             }
         }
 
         function onMouseUp(event) {
-            if (event.button === 0) { // Left click
+            if (event.button === 2) { // Right click
                 isDragging = false;
             }
         }
 
         function onMouseMove(event) {
-            if (event.buttons === 1) { // Left mouse button is down
+            if (event.buttons === 2) { // Right mouse button is down
                 const deltaX = event.clientX - previousMouseX;
                 const deltaY = event.clientY - previousMouseY;
                 
-                // If we've moved enough, consider it a drag
                 if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
                     isDragging = true;
                     cameraAngle += deltaX * 0.01;
@@ -473,37 +405,13 @@
             renderer.domElement.addEventListener('mouseup', onMouseUp);
             renderer.domElement.addEventListener('mousemove', onMouseMove);
             renderer.domElement.addEventListener('wheel', onMouseWheel);
+            renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
             renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: false });
             renderer.domElement.addEventListener('touchmove', onTouchMove, { passive: false });
             renderer.domElement.addEventListener('touchend', onTouchEnd, { passive: false });
             document.getElementById('undo').addEventListener('click', undo);
             document.getElementById('redo').addEventListener('click', redo);
             document.getElementById('reset').addEventListener('click', reset);
-            
-            // Mouse down/up for hold-to-rotate
-            document.getElementById('rotate-left').addEventListener('mousedown', () => startRotation(-1, 0, 0));
-            document.getElementById('rotate-left').addEventListener('mouseup', stopRotation);
-            document.getElementById('rotate-left').addEventListener('mouseleave', stopRotation);
-            
-            document.getElementById('rotate-right').addEventListener('mousedown', () => startRotation(1, 0, 0));
-            document.getElementById('rotate-right').addEventListener('mouseup', stopRotation);
-            document.getElementById('rotate-right').addEventListener('mouseleave', stopRotation);
-            
-            document.getElementById('rotate-up').addEventListener('mousedown', () => startRotation(0, 1, 0));
-            document.getElementById('rotate-up').addEventListener('mouseup', stopRotation);
-            document.getElementById('rotate-up').addEventListener('mouseleave', stopRotation);
-            
-            document.getElementById('rotate-down').addEventListener('mousedown', () => startRotation(0, -1, 0));
-            document.getElementById('rotate-down').addEventListener('mouseup', stopRotation);
-            document.getElementById('rotate-down').addEventListener('mouseleave', stopRotation);
-            
-            document.getElementById('zoom-in').addEventListener('mousedown', () => startRotation(0, 0, -1));
-            document.getElementById('zoom-in').addEventListener('mouseup', stopRotation);
-            document.getElementById('zoom-in').addEventListener('mouseleave', stopRotation);
-            
-            document.getElementById('zoom-out').addEventListener('mousedown', () => startRotation(0, 0, 1));
-            document.getElementById('zoom-out').addEventListener('mouseup', stopRotation);
-            document.getElementById('zoom-out').addEventListener('mouseleave', stopRotation);
             
             window.addEventListener('resize', onWindowResize);
         }
@@ -513,41 +421,6 @@
             const zoomSpeed = 0.1;
             cameraDistance += event.deltaY * zoomSpeed * 0.01;
             cameraDistance = Math.max(4, Math.min(15, cameraDistance));
-            updateCameraPosition();
-        }
-
-        function startRotation(horizontal, vertical, zoom) {
-            if (isRotating) return;
-            isRotating = true;
-            
-            // Immediate rotation on click
-            rotateCamera(horizontal, vertical, zoom);
-            
-            // Continue rotating while held
-            rotationInterval = setInterval(() => {
-                rotateCamera(horizontal, vertical, zoom);
-            }, 50);
-        }
-
-        function stopRotation() {
-            isRotating = false;
-            if (rotationInterval) {
-                clearInterval(rotationInterval);
-                rotationInterval = null;
-            }
-        }
-
-        function rotateCamera(horizontal, vertical, zoom) {
-            if (horizontal !== 0) {
-                cameraAngle += horizontal * 0.05;
-            }
-            if (vertical !== 0) {
-                cameraHeight = Math.max(3, Math.min(12, cameraHeight + vertical * 0.15));
-            }
-            if (zoom !== 0) {
-                cameraDistance += zoom * 0.1;
-                cameraDistance = Math.max(4, Math.min(15, cameraDistance));
-            }
             updateCameraPosition();
         }
 
