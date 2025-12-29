@@ -10,6 +10,7 @@
             overflow: hidden;
             font-family: Arial, sans-serif;
             background: linear-gradient(to bottom, #1a1a2e, #16213e);
+            touch-action: none;
         }
         #container {
             width: 100vw;
@@ -17,67 +18,39 @@
         }
         #ui {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 20px;
-            border-radius: 10px;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
             color: white;
             text-align: center;
-            min-width: 300px;
-        }
-        #rotation-controls {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 20px;
-            border-radius: 10px;
-            color: white;
-        }
-        .rotation-title {
-            font-size: 14px;
-            margin-bottom: 10px;
-            color: #ccc;
-        }
-        .rotation-row {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-            align-items: center;
-        }
-        .rotation-label {
-            width: 80px;
-            font-size: 14px;
-        }
-        .rotate-btn {
-            width: 50px;
-            height: 50px;
-            font-size: 20px;
-            padding: 0;
+            max-width: 280px;
         }
         #status {
-            font-size: 24px;
-            margin-bottom: 15px;
+            font-size: 18px;
+            margin-bottom: 8px;
             font-weight: bold;
         }
         .blue-turn { color: #4a9eff; }
         .red-turn { color: #ff4a4a; }
         .button-container {
             display: flex;
-            gap: 10px;
+            gap: 6px;
             justify-content: center;
-            margin-top: 15px;
+            margin-top: 8px;
+            flex-wrap: wrap;
         }
         button {
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 8px 12px;
+            font-size: 14px;
             cursor: pointer;
             border: none;
             border-radius: 5px;
             background: #4a9eff;
             color: white;
             transition: all 0.3s;
+            min-width: 60px;
         }
         button:hover:not(:disabled) {
             background: #357abd;
@@ -95,9 +68,81 @@
             background: #cc3838;
         }
         #instructions {
-            margin-top: 15px;
-            font-size: 14px;
+            margin-top: 8px;
+            font-size: 11px;
             color: #ccc;
+        }
+        #rotation-controls {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            color: white;
+        }
+        .rotation-title {
+            font-size: 12px;
+            margin-bottom: 6px;
+            color: #ccc;
+        }
+        .rotation-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 6px;
+            align-items: center;
+        }
+        .rotation-label {
+            width: 60px;
+            font-size: 11px;
+        }
+        .rotate-btn {
+            width: 40px;
+            height: 40px;
+            font-size: 18px;
+            padding: 0;
+            min-width: 40px;
+        }
+        
+        @media (max-width: 768px) {
+            #ui {
+                bottom: 5px;
+                left: 5px;
+                padding: 8px;
+                max-width: calc(50% - 15px);
+                font-size: 12px;
+            }
+            #status {
+                font-size: 14px;
+                margin-bottom: 6px;
+            }
+            button {
+                padding: 6px 8px;
+                font-size: 12px;
+                min-width: 50px;
+            }
+            #instructions {
+                font-size: 9px;
+                margin-top: 6px;
+            }
+            #rotation-controls {
+                bottom: 5px;
+                right: 5px;
+                padding: 8px;
+            }
+            .rotation-title {
+                font-size: 10px;
+                margin-bottom: 4px;
+            }
+            .rotation-label {
+                width: 50px;
+                font-size: 9px;
+            }
+            .rotate-btn {
+                width: 35px;
+                height: 35px;
+                font-size: 16px;
+            }
         }
     </style>
 </head>
@@ -148,6 +193,9 @@
         let isDragging = false;
         let previousMouseX = 0;
         let previousMouseY = 0;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isTouchDrag = false;
 
         const BOARD_SIZE = 4;
 
@@ -425,6 +473,9 @@
             renderer.domElement.addEventListener('mouseup', onMouseUp);
             renderer.domElement.addEventListener('mousemove', onMouseMove);
             renderer.domElement.addEventListener('wheel', onMouseWheel);
+            renderer.domElement.addEventListener('touchstart', onTouchStart, { passive: false });
+            renderer.domElement.addEventListener('touchmove', onTouchMove, { passive: false });
+            renderer.domElement.addEventListener('touchend', onTouchEnd, { passive: false });
             document.getElementById('undo').addEventListener('click', undo);
             document.getElementById('redo').addEventListener('click', redo);
             document.getElementById('reset').addEventListener('click', reset);
@@ -511,6 +562,77 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onTouchStart(event) {
+            event.preventDefault();
+            if (event.touches.length === 1) {
+                isTouchDrag = false;
+                touchStartX = event.touches[0].clientX;
+                touchStartY = event.touches[0].clientY;
+                previousMouseX = touchStartX;
+                previousMouseY = touchStartY;
+            }
+        }
+
+        function onTouchMove(event) {
+            event.preventDefault();
+            if (event.touches.length === 1) {
+                const touch = event.touches[0];
+                const deltaX = touch.clientX - previousMouseX;
+                const deltaY = touch.clientY - previousMouseY;
+                
+                // If moved more than threshold, it's a drag
+                if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
+                    isTouchDrag = true;
+                    cameraAngle += deltaX * 0.01;
+                    cameraHeight = Math.max(3, Math.min(12, cameraHeight + deltaY * 0.05));
+                    updateCameraPosition();
+                }
+
+                previousMouseX = touch.clientX;
+                previousMouseY = touch.clientY;
+            } else if (event.touches.length === 2) {
+                // Pinch to zoom
+                isTouchDrag = true;
+                const touch1 = event.touches[0];
+                const touch2 = event.touches[1];
+                const currentDistance = Math.hypot(
+                    touch2.clientX - touch1.clientX,
+                    touch2.clientY - touch1.clientY
+                );
+                
+                if (this.lastTouchDistance) {
+                    const delta = this.lastTouchDistance - currentDistance;
+                    cameraDistance += delta * 0.01;
+                    cameraDistance = Math.max(4, Math.min(15, cameraDistance));
+                    updateCameraPosition();
+                }
+                
+                this.lastTouchDistance = currentDistance;
+            }
+        }
+
+        function onTouchEnd(event) {
+            event.preventDefault();
+            
+            if (!isTouchDrag && event.changedTouches.length === 1) {
+                const touch = event.changedTouches[0];
+                mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(sticks);
+
+                if (intersects.length > 0) {
+                    const stick = intersects[0].object;
+                    const { x, z } = stick.userData;
+                    dropPiece(x, z);
+                }
+            }
+            
+            isTouchDrag = false;
+            this.lastTouchDistance = null;
         }
 
         function animate() {
