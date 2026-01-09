@@ -67,6 +67,12 @@
         #reset:hover {
             background: #cc3838;
         }
+        #mode-toggle {
+            background: #9b59b6;
+        }
+        #mode-toggle:hover {
+            background: #7d3c98;
+        }
         #instructions {
             margin-top: 8px;
             font-size: 11px;
@@ -104,6 +110,7 @@
         <div class="button-container">
             <button id="undo">Undo</button>
             <button id="redo">Redo</button>
+            <button id="mode-toggle">2D Mode</button>
             <button id="reset">New Game</button>
         </div>
         <div id="instructions">Click stick to play • Right-drag to rotate • Scroll to zoom</div>
@@ -129,6 +136,8 @@
         let touchStartX = 0;
         let touchStartY = 0;
         let isTouchDrag = false;
+        let is2DMode = false;
+        let baseBoard = null;
 
         const BOARD_SIZE = 4;
 
@@ -155,38 +164,84 @@
             scene.add(directionalLight);
 
             // Create base board
-            const baseGeometry = new THREE.BoxGeometry(4.2, 0.3, 4.2);
-            const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x63451e });
-            const base = new THREE.Mesh(baseGeometry, baseMaterial);
-            base.position.y = -0.15;
-            scene.add(base);
+            createBaseBoard();
 
             // Initialize board state
-            for (let x = 0; x < BOARD_SIZE; x++) {
-                board[x] = [];
-                for (let z = 0; z < BOARD_SIZE; z++) {
-                    board[x][z] = [];
-                }
-            }
+            initializeBoard();
 
             createSticks();
             setupEventListeners();
             animate();
         }
 
+        function createBaseBoard() {
+            if (baseBoard) {
+                scene.remove(baseBoard);
+            }
+            
+            if (is2DMode) {
+                const baseGeometry = new THREE.BoxGeometry(16.2, 0.3, 1.2);
+                const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x63451e });
+                baseBoard = new THREE.Mesh(baseGeometry, baseMaterial);
+            } else {
+                const baseGeometry = new THREE.BoxGeometry(4.2, 0.3, 4.2);
+                const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x63451e });
+                baseBoard = new THREE.Mesh(baseGeometry, baseMaterial);
+            }
+            
+            baseBoard.position.y = -0.15;
+            scene.add(baseBoard);
+        }
+
+        function initializeBoard() {
+            if (is2DMode) {
+                board = [];
+                for (let x = 0; x < 16; x++) {
+                    board[x] = [];
+                    board[x][0] = [];
+                }
+            } else {
+                board = [];
+                for (let x = 0; x < BOARD_SIZE; x++) {
+                    board[x] = [];
+                    for (let z = 0; z < BOARD_SIZE; z++) {
+                        board[x][z] = [];
+                    }
+                }
+            }
+        }
+
         function createSticks() {
+            // Clear existing sticks
+            sticks.forEach(stick => scene.remove(stick));
+            sticks = [];
+            
             const stickGeometry = new THREE.CylinderGeometry(0.08, 0.08, 4.0, 16);
             const stickMaterial = new THREE.MeshStandardMaterial({ color: 0xdbb672 });
 
-            for (let x = 0; x < BOARD_SIZE; x++) {
-                for (let z = 0; z < BOARD_SIZE; z++) {
+            if (is2DMode) {
+                // Create 16x1 grid
+                for (let x = 0; x < 16; x++) {
                     const stick = new THREE.Mesh(stickGeometry, stickMaterial.clone());
-                    const posX = (x - 1.5) * 1.0;
-                    const posZ = (z - 1.5) * 1.0;
+                    const posX = (x - 7.5) * 1.0;
+                    const posZ = 0;
                     stick.position.set(posX, 2.0, posZ);
-                    stick.userData = { x, z, type: 'stick' };
+                    stick.userData = { x, z: 0, type: 'stick' };
                     scene.add(stick);
                     sticks.push(stick);
+                }
+            } else {
+                // Create 4x4 grid
+                for (let x = 0; x < BOARD_SIZE; x++) {
+                    for (let z = 0; z < BOARD_SIZE; z++) {
+                        const stick = new THREE.Mesh(stickGeometry, stickMaterial.clone());
+                        const posX = (x - 1.5) * 1.0;
+                        const posZ = (z - 1.5) * 1.0;
+                        stick.position.set(posX, 2.0, posZ);
+                        stick.userData = { x, z, type: 'stick' };
+                        scene.add(stick);
+                        sticks.push(stick);
+                    }
                 }
             }
         }
@@ -199,9 +254,17 @@
                 roughness: 0.4
             });
             const piece = new THREE.Mesh(geometry, material);
-            const posX = (x - 1.5) * 1.0;
+            
+            let posX, posZ;
+            if (is2DMode) {
+                posX = (x - 7.5) * 1.0;
+                posZ = 0;
+            } else {
+                posX = (x - 1.5) * 1.0;
+                posZ = (z - 1.5) * 1.0;
+            }
+            
             const posY = y * 1.0 + 0.4;
-            const posZ = (z - 1.5) * 1.0;
             piece.position.set(posX, posY, posZ);
             scene.add(piece);
             return piece;
@@ -385,10 +448,19 @@
 
         function reset() {
             // Remove all pieces
-            for (let x = 0; x < BOARD_SIZE; x++) {
-                for (let z = 0; z < BOARD_SIZE; z++) {
-                    board[x][z].forEach(piece => scene.remove(piece.mesh));
-                    board[x][z] = [];
+            if (is2DMode) {
+                for (let x = 0; x < 16; x++) {
+                    if (board[x] && board[x][0]) {
+                        board[x][0].forEach(piece => scene.remove(piece.mesh));
+                    }
+                }
+            } else {
+                for (let x = 0; x < BOARD_SIZE; x++) {
+                    for (let z = 0; z < BOARD_SIZE; z++) {
+                        if (board[x] && board[x][z]) {
+                            board[x][z].forEach(piece => scene.remove(piece.mesh));
+                        }
+                    }
                 }
             }
 
@@ -396,7 +468,46 @@
             gameOver = false;
             history = [];
             historyIndex = -1;
+            initializeBoard();
             updateStatus();
+        }
+
+        function toggleMode() {
+            is2DMode = !is2DMode;
+            document.getElementById('mode-toggle').textContent = is2DMode ? '3D Mode' : '2D Mode';
+            
+            // Clear all pieces
+            for (let x = 0; x < Math.max(16, BOARD_SIZE); x++) {
+                if (board[x]) {
+                    for (let z = 0; z < BOARD_SIZE; z++) {
+                        if (board[x][z]) {
+                            board[x][z].forEach(piece => scene.remove(piece.mesh));
+                        }
+                    }
+                }
+            }
+            
+            // Recreate board and sticks
+            createBaseBoard();
+            createSticks();
+            initializeBoard();
+            
+            // Reset game state
+            currentPlayer = 'blue';
+            gameOver = false;
+            history = [];
+            historyIndex = -1;
+            updateStatus();
+            
+            // Adjust camera for new mode
+            if (is2DMode) {
+                cameraDistance = 10;
+                cameraHeight = 6;
+            } else {
+                cameraDistance = 7;
+                cameraHeight = 8;
+            }
+            updateCameraPosition();
         }
 
         function setupEventListeners() {
@@ -412,6 +523,7 @@
             document.getElementById('undo').addEventListener('click', undo);
             document.getElementById('redo').addEventListener('click', redo);
             document.getElementById('reset').addEventListener('click', reset);
+            document.getElementById('mode-toggle').addEventListener('click', toggleMode);
             
             window.addEventListener('resize', onWindowResize);
         }
