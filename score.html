@@ -180,7 +180,7 @@
             }
             
             if (is2DMode) {
-                const baseGeometry = new THREE.BoxGeometry(16.2, 0.3, 1.2);
+                const baseGeometry = new THREE.BoxGeometry(1.2, 0.3, 16.2);
                 const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x63451e });
                 baseBoard = new THREE.Mesh(baseGeometry, baseMaterial);
             } else {
@@ -220,11 +220,11 @@
             const stickMaterial = new THREE.MeshStandardMaterial({ color: 0xdbb672 });
 
             if (is2DMode) {
-                // Create 16x1 grid
+                // Create 16x1 grid (rotated 90 degrees, along Z axis)
                 for (let x = 0; x < 16; x++) {
                     const stick = new THREE.Mesh(stickGeometry, stickMaterial.clone());
-                    const posX = (x - 7.5) * 1.0;
-                    const posZ = 0;
+                    const posX = 0;
+                    const posZ = (x - 7.5) * 1.0;
                     stick.position.set(posX, 2.0, posZ);
                     stick.userData = { x, z: 0, type: 'stick' };
                     scene.add(stick);
@@ -257,8 +257,8 @@
             
             let posX, posZ;
             if (is2DMode) {
-                posX = (x - 7.5) * 1.0;
-                posZ = 0;
+                posX = 0;
+                posZ = (x - 7.5) * 1.0;
             } else {
                 posX = (x - 1.5) * 1.0;
                 posZ = (z - 1.5) * 1.0;
