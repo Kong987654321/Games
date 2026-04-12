@@ -32,7 +32,7 @@
             margin-bottom: 8px;
             font-weight: bold;
         }
-        .blue-turn { color: #4a9eff; }
+        .blue-turn { color: #3810ff; }
         .red-turn { color: #ff4a4a; }
         .button-container {
             display: flex;
@@ -47,7 +47,7 @@
             cursor: pointer;
             border: none;
             border-radius: 5px;
-            background: #4a9eff;
+            background: #077bff;
             color: white;
             transition: all 0.3s;
             min-width: 60px;
@@ -249,7 +249,7 @@
         function createPiece(x, y, z, color) {
             const geometry = new THREE.SphereGeometry(0.4, 32, 32);
             const material = new THREE.MeshStandardMaterial({ 
-                color: color === 'blue' ? 0x4a9eff : 0xff4a4a,
+                color: color === 'blue' ? 0x2450ff : 0xff4a4a,
                 metalness: 0.3,
                 roughness: 0.4
             });
@@ -273,19 +273,21 @@
         function dropPiece(x, z) {
             if (gameOver) return false;
             
-            const column = board[x][z];
+            // In 2D mode, always use z=0
+            const actualZ = is2DMode ? 0 : z;
+            const column = board[x][actualZ];
             if (column.length >= BOARD_SIZE) return false;
 
             const y = column.length;
-            const piece = createPiece(x, y, z, currentPlayer);
+            const piece = createPiece(x, y, actualZ, currentPlayer);
             column.push({ color: currentPlayer, mesh: piece });
 
             // Clear future history when making a new move
             history = history.slice(0, historyIndex + 1);
-            history.push({ x, z, color: currentPlayer });
+            history.push({ x, z: actualZ, color: currentPlayer });
             historyIndex++;
 
-            if (checkWin(x, y, z)) {
+            if (checkWin(x, y, actualZ)) {
                 gameOver = true;
                 document.getElementById('status').textContent = `${currentPlayer === 'blue' ? 'Blue' : 'Red'} Wins!`;
                 return true;
@@ -298,7 +300,13 @@
 
         function checkWin(x, y, z) {
             const color = currentPlayer;
-            const directions = [
+            
+            // In 2D mode, limit directions to only valid ones
+            const directions = is2DMode ? [
+                [[1,0,0], [-1,0,0]], // Horizontal (along the 16 columns)
+                [[0,1,0], [0,-1,0]], // Vertical (up/down)
+                [[1,1,0], [-1,-1,0]], // Diagonal
+            ] : [
                 [[1,0,0], [-1,0,0]], // X axis
                 [[0,1,0], [0,-1,0]], // Y axis
                 [[0,0,1], [0,0,-1]], // Z axis
@@ -323,8 +331,12 @@
         function countDirection(x, y, z, color, [dx, dy, dz]) {
             let count = 0;
             let nx = x + dx, ny = y + dy, nz = z + dz;
-            while (nx >= 0 && nx < BOARD_SIZE && ny >= 0 && ny < BOARD_SIZE && nz >= 0 && nz < BOARD_SIZE) {
-                if (board[nx][nz][ny] && board[nx][nz][ny].color === color) {
+            
+            const maxX = is2DMode ? 16 : BOARD_SIZE;
+            const maxZ = is2DMode ? 1 : BOARD_SIZE;
+            
+            while (nx >= 0 && nx < maxX && ny >= 0 && ny < BOARD_SIZE && nz >= 0 && nz < maxZ) {
+                if (board[nx] && board[nx][nz] && board[nx][nz][ny] && board[nx][nz][ny].color === color) {
                     count++;
                     nx += dx;
                     ny += dy;
@@ -396,7 +408,7 @@
             if (intersects.length > 0 && !gameOver) {
                 const stick = intersects[0].object;
                 if (board[stick.userData.x][stick.userData.z].length < BOARD_SIZE) {
-                    stick.material.color.setHex(currentPlayer === 'blue' ? 0x4a9eff : 0xff4a4a);
+                    stick.material.color.setHex(currentPlayer === 'blue' ? 0x2450ff : 0xff4a4a);
                 }
             }
         }
@@ -417,7 +429,8 @@
             if (historyIndex < 0) return;
 
             const move = history[historyIndex];
-            const column = board[move.x][move.z];
+            const z = is2DMode ? 0 : move.z;
+            const column = board[move.x][z];
             const piece = column.pop();
             scene.remove(piece.mesh);
 
@@ -432,12 +445,13 @@
 
             historyIndex++;
             const move = history[historyIndex];
-            const column = board[move.x][move.z];
+            const z = is2DMode ? 0 : move.z;
+            const column = board[move.x][z];
             const y = column.length;
-            const piece = createPiece(move.x, y, move.z, move.color);
+            const piece = createPiece(move.x, y, z, move.color);
             column.push({ color: move.color, mesh: piece });
 
-            if (checkWin(move.x, y, move.z)) {
+            if (checkWin(move.x, y, z)) {
                 gameOver = true;
                 document.getElementById('status').textContent = `${move.color === 'blue' ? 'Blue' : 'Red'} Wins!`;
             } else {
