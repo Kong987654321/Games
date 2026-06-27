@@ -198,6 +198,39 @@
       color: #ff6d6d;
     }
 
+    /* RANDOM BUTTON */
+    #randomBtn {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.55rem 1.2rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.12s, color 0.12s, border-color 0.12s, box-shadow 0.12s;
+    }
+
+    #randomBtn:hover {
+      background: var(--cell-hover);
+      color: var(--text);
+      border-color: var(--accent);
+    }
+
+    #randomBtn.active {
+      background: #1e1830;
+      color: #c4b5ff;
+      border-color: var(--accent);
+      box-shadow: 0 0 8px rgba(124, 109, 255, 0.35);
+    }
+
+    #randomBtn.active:hover {
+      background: #26204a;
+    }
+
     /* CONTROLS */
     .controls {
       display: flex;
@@ -331,7 +364,8 @@
   <div class="mode-bar">
     <span class="mode-label">Mode</span>
     <button id="modeBtn" title="Toggle + / −">+</button>
-    <span class="mode-desc" id="modeDesc">adds value</span>
+    <span class="mode-desc" id="modeDesc">adds value to neighbors</span>
+    <button id="randomBtn" title="Randomly pick + or − on each click">🎲 Random</button>
   </div>
 
   <div class="grid-container">
@@ -399,14 +433,36 @@
     clearTimeout(undoHighlightTimer);
   }
 
+  let randomMode = false;
+  const randomBtn = document.getElementById('randomBtn');
+
+  randomBtn.addEventListener('click', () => {
+    randomMode = !randomMode;
+    randomBtn.classList.toggle('active', randomMode);
+    // dim the manual mode toggle while random is on
+    modeBtn.style.opacity = randomMode ? '0.4' : '1';
+    modeBtn.style.pointerEvents = randomMode ? 'none' : '';
+    modeDesc.textContent = randomMode
+      ? 'randomly picks + or − each click'
+      : (mode === '+' ? 'adds value to neighbors' : 'subtracts value from neighbors');
+  });
+
   function onCellClick(idx) {
     clearUndoHighlight();
-    // Save snapshot — also record which cell was pressed and its value at time of click
-    history.push({ grid: [...grid], moveCount, clickedIdx: idx, clickedVal: grid[idx], clickedMode: mode });
+
+    // Determine effective mode for this click
+    const effectiveMode = randomMode ? (Math.random() < 0.5 ? '+' : '-') : mode;
+    if (randomMode) {
+      // Briefly reflect the chosen mode on the toggle button for visual feedback
+      modeBtn.textContent = effectiveMode;
+      modeBtn.classList.toggle('minus', effectiveMode === '-');
+    }
+
+    history.push({ grid: [...grid], moveCount, clickedIdx: idx, clickedVal: grid[idx], clickedMode: effectiveMode });
 
     const val = grid[idx];
     const { row, col } = getRowCol(idx);
-    const delta = mode === '+' ? val : -val;
+    const delta = effectiveMode === '+' ? val : -val;
 
     const affected = [];
 
@@ -427,7 +483,7 @@
 
     moveCount++;
     render();
-    flashCells(idx, affected, mode);
+    flashCells(idx, affected, effectiveMode);
   }
 
   function flashCells(origin, affected, m) {
@@ -452,7 +508,9 @@
     mode = mode === '+' ? '-' : '+';
     modeBtn.textContent = mode;
     modeBtn.classList.toggle('minus', mode === '-');
-    modeDesc.textContent = mode === '+' ? 'adds value' : 'subtracts value';
+    if (!randomMode) {
+      modeDesc.textContent = mode === '+' ? 'adds value to neighbors' : 'subtracts value from neighbors';
+    }
   });
 
   const toastEl = document.getElementById('undoToast');
