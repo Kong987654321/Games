@@ -364,7 +364,7 @@
   <div class="mode-bar">
     <span class="mode-label">Mode</span>
     <button id="modeBtn" title="Toggle + / −">+</button>
-    <span class="mode-desc" id="modeDesc">adds value to neighbors</span>
+    <span class="mode-desc" id="modeDesc">adds value</span>
     <button id="randomBtn" title="Randomly pick + or − on each click">🎲 Random</button>
   </div>
 
@@ -444,7 +444,7 @@
     modeBtn.style.pointerEvents = randomMode ? 'none' : '';
     modeDesc.textContent = randomMode
       ? 'randomly picks + or − each click'
-      : (mode === '+' ? 'adds value to neighbors' : 'subtracts value from neighbors');
+      : (mode === '+' ? 'adds value' : 'subtracts value');
   });
 
   function onCellClick(idx) {
@@ -509,7 +509,7 @@
     modeBtn.textContent = mode;
     modeBtn.classList.toggle('minus', mode === '-');
     if (!randomMode) {
-      modeDesc.textContent = mode === '+' ? 'adds value to neighbors' : 'subtracts value from neighbors';
+      modeDesc.textContent = mode === '+' ? 'adds value' : 'subtracts value';
     }
   });
 
